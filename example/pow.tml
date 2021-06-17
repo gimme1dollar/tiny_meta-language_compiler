@@ -1,0 +1,23 @@
+val ifthenelse = fn true => (fn s1 => fn s2 => s1) | false => (fn s1 => fn s2 => s2);
+
+val rec loop = fn 0 => (fn f => fn x => x) | n => (fn f => fn x => loop (n - 1) f (f x));
+
+val halve = fn num =>
+    let val (_, ret) = loop num (fn (x, y) => (x + 1, x - y)) (0, 0) in
+        ret
+    end
+;
+
+val rec isEven = fn 0 => true | 1 => false | x => isEven (x - 2);
+
+val rec pow = fn a => (
+    fn 0 => 1 | x =>
+        let val halfPow = pow a (halve x) in
+            let val ret = halfPow * halfPow in
+                ret * (ifthenelse (isEven x) 1 a)
+            end
+        end
+    )
+;
+
+pow 5 4;;

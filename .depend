@@ -1,0 +1,14 @@
+compile.cmo : \
+    typing.cmo \
+    translate.cmo
+compile.cmx : \
+    typing.cmx \
+    translate.cmx
+mono.cmo :
+mono.cmx :
+translate.cmo : \
+    mono.cmo
+translate.cmx : \
+    mono.cmx
+typing.cmo :
+typing.cmx :

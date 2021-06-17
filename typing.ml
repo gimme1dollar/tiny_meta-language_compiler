@@ -23,7 +23,6 @@ let rec ty2tyvars ty =
 	| T_INT | T_BOOL | T_UNIT -> []
 	| T_NAME n | T_VAR n -> [n]
 	| T_PAIR (ty1, ty2) | T_FUN (ty1, ty2) -> union (ty2tyvars ty1) (ty2tyvars ty2)
-	| _ -> []
 
 let rec get_scheme_free_var tsch =
 	let (var_set, ty) = tsch in
@@ -38,7 +37,6 @@ let rec is_scheme_free_var tsch =
 	| T_VAR tyvar' -> (tyvar = tyvar')
     | T_PAIR (ty1, ty2) | T_FUN (ty1, ty2) -> 
 	  (is_scheme_free_var (tyvar, ty1)) && (is_scheme_free_var (tyvar, ty2))
-	| _ -> false
     
 (* type_env : (type_constructor -> type_name) *)
 type tenv = (Ast.tycon, tyname) dict
@@ -86,7 +84,6 @@ let rec subst_type ty ss =
 		| T_PAIR (ty1, ty2) -> T_PAIR (subst_type ty1 [s], subst_type ty2 [s]) 
 		| T_FUN (ty1, ty2) -> T_FUN (subst_type ty1 [s], subst_type ty2 [s]) 
 		| T_VAR v -> if v = tyvar' then ty' else ty
-		| _ -> ty
 	in
 
 	List.fold_left func ty ss 
@@ -111,7 +108,6 @@ let rec subst_patty patty ss =
 			let patty1' = subst_patty patty1 [s] in
 			let patty2' = subst_patty patty2 [s] in
 			PATTY (P_PAIR (patty1', patty2'), subst_type ty [s]) 
-		| _ -> patty
 	in
 
 	List.fold_left func patty ss
@@ -158,7 +154,6 @@ let rec subst_expty expty ss =
 			let exp' = subst_expty exp [s] in
 			let expty' = E_LET (dec', exp') in
 			EXPTY (expty', subst_type ty [s])
-		| _ -> expty
 		end
 	in
 
@@ -168,13 +163,9 @@ and subst_mlist mlist ss = raise NotImplemented
 
 and subst_dec dec ss =
     match dec with
-    | D_VAL (patty, expty) -> 
-	  D_VAL (subst_patty patty ss, subst_expty expty ss)
-    | D_REC (patty, expty) -> 
-	  D_REC (subst_patty patty ss, subst_expty expty ss)
-    | D_DTYPE -> 
-	  D_DTYPE
-	| _ -> dec
+    | D_VAL (patty, expty) -> D_VAL (subst_patty patty ss, subst_expty expty ss)
+    | D_REC (patty, expty) -> D_REC (subst_patty patty ss, subst_expty expty ss)
+    | D_DTYPE -> D_DTYPE
 
 let subst_venv venv ss =
 	let func venv s = 
@@ -298,16 +289,6 @@ let rec pat2ty pat ctx =
 	  let ve' = subst_venv pat'_ve (unify [(ty2ty ty te, ty')]) in
 	  (ty', pat', ve')
 
-and print_subst ss = 
-	let print_tyvar s = 
-		let (tyvar, ty) = s in
-		let _ = print_endline (string_of_int tyvar) in
-		tyvar
-	in 
-
-	let _ = print_endline "***" in
-	List.map print_tyvar ss
-
 (* exp2ty : exp -> tctx -> ty * exp * (subst list) *)
 and exp2ty exp ctx =
 	let (te, ve) = ctx in
@@ -351,9 +332,7 @@ and exp2ty exp ctx =
 	  (ty', E_APP (exp1', exp2'), s')
 	| Ast.E_PAIR (exp1, exp2) ->
 	  let (t1, e1, s1) = exp2ty exp1 ctx in
-	  let _ = print_subst s1  in
 	  let (t2, e2, s2) = exp2ty exp2 (te, subst_venv ve s1) in
-	  let _ = print_subst s2 in
 
 	  let s' = s1 @ s2 in
 	  let expty' = EXPTY (E_PAIR (EXPTY (e1, t1), EXPTY (e2, t2)), T_PAIR (t1, t2)) in
@@ -371,11 +350,11 @@ and exp2ty exp ctx =
 
 	  let EXPTY (exp', ty') = subst_expty (EXPTY(exp, ty)) (s1 @ s2) in
 	  (ty', exp', [])
-	| _ -> raise TypingError
 
 (* mlist2ty : mlist -> tctx -> ty * exp * (subst list) *)
 and mlist2ty mlist ctx = 
 	match mlist with
+  | [] -> raise TypingError
 	| hd :: [] ->
 	  let (ty', exp', s') = mrule2ty hd ctx in
 	  (ty', exp', s')
